@@ -1,0 +1,5 @@
+Text Mining
+https://rstudio-pubs-static.s3.amazonaws.com/31867_8236987cf0a8444e962ccd2aec46d9c3.html
+http://beyondvalence.blogspot.de/2014/01/text-mining-4-performing-term.html
+
+
