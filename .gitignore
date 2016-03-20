@@ -26,3 +26,5 @@ texts
 
 Project.Rproj
 .Rproj.user
+
+*.html

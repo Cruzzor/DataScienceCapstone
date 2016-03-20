@@ -1,0 +1,12 @@
+---
+title: "Datascience Specialization Capstone Project: Milestone Report 1"
+author: "MB"
+date: "20 März 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
