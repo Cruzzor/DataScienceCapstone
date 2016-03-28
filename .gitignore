@@ -28,3 +28,7 @@ Project.Rproj
 .Rproj.user
 
 *.html
+
+exploration_cache/
+exploration_files/
+rsconnect/
