@@ -9,4 +9,309 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+## Introduction
+This first milestone report for the Data Science Specialization Capstone Project is all about the first exploration of the given data. The goal of this report is to give a general overview of the features of the text data and summarize my plans for the project main application, the text prediction shiny app. For that, we're going to inspect the data and identify the most used words together with so called n-grams to identify the most used word combinations. In order to do so, some basic text pre-processing will be applied to the data, which will also be presented. At the end of this report, I'm going to state my ideas for the final application.
 
+Use package for this report:
+```{r, warning=FALSE, message=FALSE}
+library(NLP)    # Natural language processing
+library(tm)     # Text mining
+library(RWeka)  # n-gram tokenization
+library(slam)   # For operations on DTM
+library(dplyr)
+library(ggplot2)
+```
+
+## Exploration
+The data has been downloaded directly from the Coursera course web page. In the zip file, we find texts from three different kinds of sources:
+
+* Blog entries
+* Twitter messages
+* News
+
+They are also stored for four different languages. For this project, we're going to use the english texts for better comparability with other students' work. 
+
+```{r, cache=TRUE, warning=FALSE}
+twitter <- readLines("./en_US/en_US.twitter.txt", encoding = "UTF-8")
+blogs <- readLines("./en_US/en_US.blogs.txt", encoding = "UTF-8")
+news <- readLines("./en_US/en_US.news.txt", encoding = "UTF-8")
+```
+
+Before diving into details, we're going to have a look at the most general attributes of the text files:
+```{r, cache=TRUE}
+mat_1 <- matrix(c(length(twitter), length(blogs), length(news)), ncol = 3, byrow = TRUE)
+rownames(mat_1) <- "Lines of Text"
+colnames(mat_1) <- c("Twitter", "News", "Blogs")
+mat_1
+```
+The command _length_ gives us the lines of text each file consists of. As we can see, _blogs_ and _news_ are roughly the same size in that matter. However, _twitter_ has more than twice the size of the second longest file. We are no going to take a look at the average number of words per line of text:
+```{r, cache=TRUE}
+words <- function(x) {round(sum(sapply(strsplit(x, " "), length)))}
+mat_2 <- matrix(c(words(twitter) / length(twitter), words(blogs) / length(blogs), words(news) / length(news)), ncol = 3, byrow = TRUE)
+rownames(mat_2) <- "Av. words per line"
+colnames(mat_2) <- c("Twitter", "News", "Blogs")
+mat_2
+```
+As we can see, the average words per line of text in twitter messages is lower than half of the number of words from the news corpus and less than a third of the blogs corpus. We can use this information later to determine a sample size for all the three kinds of texts we have.
+
+## Pre-Processing
+In order to further analyse the data and build a prediction model, we need to clean the data. Therefore, we're going to use R's _tm_ package which comes with some built-in text mining tools. The following steps will be performed:
+
+* __Removing all special and control characters.__ In general, special characters are not needed for natural language processing (NLP). However, because we want to apply a model to predict words, we need to keep in mind that some special characters might be necessary. For now, we're going to keep the apostrophe in the text to be able to recognize words like "hadn't", "didn't" or "don't".
+* __Removing numbers.__ They are also not needed for NLP in general.
+* __Transform to lower case.__ We don't want to distinguish between lower and upper case words because this will unnecessarily blow up our number of terms and makes predicting harder.
+* __Profanitiy filtering.__ We don't want our model to learn offensive, insulting or abusive words. That's why these words will be removed from the text base.
+* __Removing stop words.__ Stop words are words that are very common in a certain language and generally are not interesting in NLP.
+* __Removing unnecessary white spaces.__ All white spaces but one between each word will be removed.
+
+For better pre-processing, we're going to use the _tm_ package to create a _Corpus_ object which makes the pre-processing part much easier. The following code accomplishes the stated tasks:
+
+```{r, eval=FALSE}
+full_text <- c(twitter, blogs, news)
+
+full_text <- gsub("[^[:alnum:]' ]", " ", full_sample)   # Remove special characters except '
+corp <- Corpus(VectorSource(full_sample))               # Create a text Corpus
+corp <- tm_map(corp, removeNumbers)                     # Remove all numbers
+corp <- tm_map(corp, content_transformer(tolower))      # Transform to lower case
+corp <- tm_map(corp, removeWords, naughtywords)         # Profanity filtering
+corp <- tm_map(corp, removeWords, stopwords("english")) # Remove stop words
+corp <- tm_map(corp, stripWhitespace)                   # Remove all unnecessary white spaces
+```
+
+## N-Grams
+### Preparation
+An n-gram is a contiguous sequence of n items from a given sequence of text or speech (Source: wikipedia). N-Grams are useful for the purpose of the final application because it will allow us to not only find single words that are commonly used but also determine which two, three or n words are commonly used together. For exploration purposes, we are going to take a look at the most frequent single words, 2-grams and 3-grams used throughout the text corpus. 
+Word frequencies are generally stored in a so-called _Document Term Matrix_. It's a large matrix with all the documents as rows and the terms (words or n-grams) as the columns, storing the number of term occurence for each document in each of the cells. We can create such a matrix for word and n-gram frequencies and then sum up the columns to get the frequencies. As an example, here's the code that accomplishes that for word frequencies:
+
+```{r, eval=FALSE}
+dtm <- DocumentTermMatrix(corp)
+sums <- col_sums(dtm)
+```
+
+At this point, we are not going to apply these methods to the whole Corpus of texts because this would take a huge amount of processing time together with the other steps that are going to come. This is due to the huge size of text we take as our input data. 
+
+### Frequency estimation
+In order to explore the word and n-gram frequencies, we are going to estimate these attributes from samples we took from the original population. The following steps will be performed:
+
+1. Take a sample of several thousands of text lines from all three sources
+2. Clean the data with the pre-processing steps described above
+3. Create a Document-Term-Matrix and determine the overall frequencies for all words or n-grams
+4. Divide the absolute values by the total amount of words in the respective sample to determine the relative frequency for all the words or n-grams
+5. Repeat 1-4 several times (e.g. 100x)
+6. For every word or n-gram, calculate the average relative occurence over all samples to get an estimation for the whole population
+
+The code for the calculation can be found in the appendix. We're going to take a look at the results now.
+
+### Results
+```{r Calculation, eval=TRUE, echo=FALSE, cache=TRUE}
+naughtywords <- scan("en", what = "String")
+
+oneList <- list()
+oneList_rel <- list()
+
+twoList <- list()
+twoList_rel <- list()
+
+threeList <- list()
+threeList_rel <- list()
+
+for (i in 1:100){
+  set.seed(42+i^2)
+  print(paste("Run ", i))
+  twitter_sample <- sample(twitter, size = length(twitter) * 0.002, replace = FALSE)
+  blogs_sample <- sample(blogs, size = length(blogs) * 0.001, replace = FALSE)
+  news_sample <- sample(news, size = length(news) * 0.001, replace = FALSE)
+  full_sample <- c(twitter_sample, blogs_sample, news_sample)
+  
+  full_sample <- gsub("[^[:alnum:]' ]", " ", full_sample)
+  corp <- Corpus(VectorSource(full_sample))
+  #corp <- tm_map(corp, removeWords, stopwords("english"))
+  #corp <- tm_map(corp, removePunctuation)
+  corp <- tm_map(corp, removeNumbers)
+  corp <- tm_map(corp, content_transformer(tolower))
+  corp <- tm_map(corp, removeWords, naughtywords)
+  #dict <- corp
+  #corp <- tm_map(corp, stemDocument)
+  #corp <- tm_map(corp, stemCompletion, dictionary = dict)
+  corp <- tm_map(corp, stripWhitespace)
+  
+  
+  ############################
+  ####### Exploration ########
+  ############################
+  
+  bigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2, delimiters = " \r\n\t"))
+  dtm <- DocumentTermMatrix(corp, control = list(tokenize = bigramTokenizer))
+              
+  sums <- col_sums(dtm)
+  nbigrams <- sum(sums)
+  sums <- subset(sums, sums >= 2)
+  sums_rel <- sums / nbigrams
+  df <- data.frame(as.table(sums))
+  df_rel <- data.frame(as.table(sums_rel))
+  twoList[[i]] <- df
+  twoList_rel[[i]] <- df_rel
+  
+  #---------------------
+  bigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3, delimiters = " \r\n\t"))
+  dtm <- DocumentTermMatrix(corp, control = list(tokenize = bigramTokenizer))
+  
+  sums <- col_sums(dtm)
+  ntrigrams <- sum(sums)
+  sums <- subset(sums, sums >= 2)
+  sums_rel <- sums / ntrigrams
+  df <- data.frame(as.table(sums))
+  df_rel <- data.frame(as.table(sums_rel))
+  threeList[[i]] <- df
+  threeList_rel[[i]] <- df_rel
+  
+  #---------------------
+  corp <- tm_map(corp, removeWords, stopwords("english"))
+  dtm <- DocumentTermMatrix(corp)
+  #wordFreq <- findFreqTerms(dtm)
+  
+  sums <- col_sums(dtm)
+  nwords <- sum(sums)
+  sums <- subset(sums, sums >= 2)
+  sums_rel <- sums / nwords
+  df <- data.frame(as.table(sums))
+  df_rel <- data.frame(as.table(sums_rel))
+  oneList[[i]] <- df
+  oneList_rel[[i]] <- df_rel
+}
+
+tmp2 <- do.call("rbind",oneList_rel)
+tmp2 <- tmp2 %>% group_by(Var1) %>% summarize(Freq = mean(Freq)) %>% arrange(desc(Freq))
+
+tmp3 <- do.call("rbind",twoList_rel)
+tmp3 <- tmp3 %>% group_by(Var1) %>% summarize(Freq = mean(Freq)) %>% arrange(desc(Freq))
+
+tmp4 <- do.call("rbind",threeList_rel)
+tmp4 <- tmp4 %>% group_by(Var1) %>% summarize(Freq = mean(Freq)) %>% arrange(desc(Freq))
+
+g1 <- ggplot(tmp2[1:50, ], aes(x = reorder(Var1, Freq), y = Freq)) + geom_bar(stat = "identity") + coord_flip() + xlab("words")
+
+g2 <- ggplot(tmp3[1:50, ], aes(x = reorder(Var1, Freq), y = Freq)) + geom_bar(stat = "identity") + coord_flip() + xlab("2-grams")
+
+g3 <- ggplot(tmp4[1:50, ], aes(x = reorder(Var1, Freq), y = Freq)) + geom_bar(stat = "identity") + coord_flip() + xlab("3-grams")
+```
+
+First, we're going to take a look at the most frequent single words:
+```{r, eval=TRUE, echo=FALSE}
+g1
+```
+
+Now we're going to explore the 50 most frequent 2-grams and 3-grams:
+```{r, eval=TRUE, echo=FALSE}
+g2
+```
+
+```{r, eval=TRUE, echo=FALSE}
+g3
+```
+
+Interesting to see is that there's a 2-gram named "it s" here, which has a very high relative frequency. The assumption is that this comes from the twitter corpus but this needs to be checked in a further analysis. Even more interesting is the list of 3-grams. Apart from the 3-grams one might expect ("thanks for the", "it would be", etc), there are a lot of unexpected terms like "the luxury vacation" or "swag swag swag". More thought must be put into the sample estimation and it must be verified whether the sample sizes or iterations need to be increased.
+
+## Plans and Ideas
+The shiny application will be an application were the user will enter a text word for word and will get one to three predictions for the next word he might want to enter. The next steps will be:
+
+* Re-think the sampling method. Things to consider are the different text sizes, the language used, etc.. It might be worth it to analyse every type of text by itself.
+* Consider word stemming for pre-processing
+* Create a model from the n-grams and develop a prediction algorithm 
+* Find a way to treat upcoming problems like 
+** Computational and memory boundaries
+** What to do with inputs that don't fit to an n-gram
+* Evaluate feature estimation
+
+
+
+## Appendix
+
+```{r, eval=FALSE}
+naughtywords <- scan("en", what = "String")
+
+oneList <- list()
+oneList_rel <- list()
+
+twoList <- list()
+twoList_rel <- list()
+
+threeList <- list()
+threeList_rel <- list()
+
+for (i in 1:100){
+  set.seed(42+i^2)
+  twitter_sample <- sample(twitter, size = length(twitter) * 0.002, replace = FALSE)
+  blogs_sample <- sample(blogs, size = length(blogs) * 0.001, replace = FALSE)
+  news_sample <- sample(news, size = length(news) * 0.001, replace = FALSE)
+  full_sample <- c(twitter_sample, blogs_sample, news_sample)
+  
+  full_sample <- gsub("[^[:alnum:]' ]", " ", full_sample)
+  corp <- Corpus(VectorSource(full_sample))
+  corp <- tm_map(corp, removeNumbers)
+  corp <- tm_map(corp, content_transformer(tolower))
+  corp <- tm_map(corp, removeWords, naughtywords)
+  corp <- tm_map(corp, stripWhitespace)
+  
+  
+  ############################
+  ####### Exploration ########
+  ############################
+  
+  bigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2, delimiters = " \r\n\t"))
+  dtm <- DocumentTermMatrix(corp, control = list(tokenize = bigramTokenizer))
+              
+  sums <- col_sums(dtm)
+  nbigrams <- sum(sums)
+  sums <- subset(sums, sums >= 2)
+  sums_rel <- sums / nbigrams
+  df <- data.frame(as.table(sums))
+  df_rel <- data.frame(as.table(sums_rel))
+  twoList[[i]] <- df
+  twoList_rel[[i]] <- df_rel
+  
+  #---------------------
+  bigramTokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3, delimiters = " \r\n\t"))
+  dtm <- DocumentTermMatrix(corp, control = list(tokenize = bigramTokenizer))
+  
+  sums <- col_sums(dtm)
+  ntrigrams <- sum(sums)
+  sums <- subset(sums, sums >= 2)
+  sums_rel <- sums / ntrigrams
+  df <- data.frame(as.table(sums))
+  df_rel <- data.frame(as.table(sums_rel))
+  threeList[[i]] <- df
+  threeList_rel[[i]] <- df_rel
+  
+  #---------------------
+  corp <- tm_map(corp, removeWords, stopwords("english"))
+  dtm <- DocumentTermMatrix(corp)
+  
+  sums <- col_sums(dtm)
+  nwords <- sum(sums)
+  sums <- subset(sums, sums >= 2)
+  sums_rel <- sums / nwords
+  df <- data.frame(as.table(sums))
+  df_rel <- data.frame(as.table(sums_rel))
+  oneList[[i]] <- df
+  oneList_rel[[i]] <- df_rel
+}
+
+tmp2 <- do.call("rbind",oneList_rel)
+tmp2 <- tmp2 %>% group_by(Var1) %>% summarize(Freq = mean(Freq)) %>% arrange(desc(Freq))
+
+tmp3 <- do.call("rbind",twoList_rel)
+tmp3 <- tmp3 %>% group_by(Var1) %>% summarize(Freq = mean(Freq)) %>% arrange(desc(Freq))
+
+tmp4 <- do.call("rbind",threeList_rel)
+tmp4 <- tmp4 %>% group_by(Var1) %>% summarize(Freq = mean(Freq)) %>% arrange(desc(Freq))
+
+g1 <- ggplot(tmp2[1:50, ], aes(x = reorder(Var1, Freq), y = Freq)) + geom_bar(stat = "identity") + coord_flip()
+g2
+
+g2 <- ggplot(tmp3[1:50, ], aes(x = reorder(Var1, Freq), y = Freq)) + geom_bar(stat = "identity") + coord_flip()
+g2
+
+g3 <- ggplot(tmp4[1:50, ], aes(x = reorder(Var1, Freq), y = Freq)) + geom_bar(stat = "identity") + coord_flip()
+g3
+```
