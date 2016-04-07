@@ -1,5 +1,14 @@
 Text Mining
 https://rstudio-pubs-static.s3.amazonaws.com/31867_8236987cf0a8444e962ccd2aec46d9c3.html
 http://beyondvalence.blogspot.de/2014/01/text-mining-4-performing-term.html
+https://lagunita.stanford.edu/c4x/Engineering/CS-224N/asset/slp4.pdf
+http://www.modsimworld.org/papers/2015/Natural_Language_Processing.pdf
 
+Efficient model creation: 
+http://www.statmt.org/wmt07/pdf/WMT12.pdf
 
+Efficient data structures for ngrams: 
+http://ceur-ws.org/Vol-971/paper21.pdf
+
+Good-Turing
+http://recognize-speech.com/language-model/n-gram-model/good-turing

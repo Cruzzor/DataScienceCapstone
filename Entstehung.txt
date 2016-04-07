@@ -1,0 +1,7 @@
+Erster Anlauf: Prediction mit 2-grams
+-> Genauigkeit: ???
+
+
+Versuche: Alle möglichen 2-Grams bestimmen für unbekannte Kombinationen.
+Probleme: Speicherbedarf exorbitant wenn Matrix, oder DF
+Ideen: Hash-Maps, Datenbank
