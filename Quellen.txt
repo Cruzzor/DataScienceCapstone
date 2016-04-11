@@ -12,3 +12,7 @@ http://ceur-ws.org/Vol-971/paper21.pdf
 
 Good-Turing
 http://recognize-speech.com/language-model/n-gram-model/good-turing
+
+Katz-Backoff
+http://stats.stackexchange.com/questions/203423/katz-backoff-help-calculating-alpha
+http://www.hlt.utdallas.edu/~sanda/courses/NLP/Lecture06.pdf
