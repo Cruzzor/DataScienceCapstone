@@ -2,11 +2,11 @@ library(dplyr)
 library(tm)
 library(quanteda)
 
-#full_sample <- gsub("[^[:alnum:]' ]", " ", full_sample) %>% 
-#  removeNumbers() %>%
-#  tolower() %>%
-#  removeWords(naughtywords) %>%
-#  stripWhitespace()
+full_sample <- gsub("[^[:alnum:]' ]", " ", full_sample) %>% 
+  removeNumbers() %>%
+  tolower() %>%
+  removeWords(naughtywords) %>%
+  stripWhitespace()
 
 #saveRDS(full_sample, file = "fullsample.Rda")
 
@@ -26,20 +26,41 @@ df <- tbl_df(data.frame(unigrams = unlist(unigrams)))
 df <- count(df, unigrams) %>% filter(n > 1)
 
 
-# Create DB
-db <- dbConnect(SQLite(), dbname = "Test")
-dbSendQuery(conn = db, 
-            "CREATE TABLE unigram (
-            id INTEGER NOT NULL,
-            gram TEXT,
-            PRIMARY KEY (id))")
+# Build CV-Set
+set.seed(301)
+twitter_sample <- sample(twitter, size = length(twitter) * 0.001, replace = FALSE)
+blogs_sample <- sample(blogs, size = length(blogs) * 0.001, replace = FALSE)
+news_sample <- sample(news, size = length(news) * 0.001, replace = FALSE)
+full_sample <- c(twitter_sample, blogs_sample, news_sample)
 
-# Write unigrams to table
-for (i in 1:nrow(df)) {
+## Hier: pre-processing wie oben
+tokens <- tokenize(paste(full_sample, collapse = ''), removePunct = FALSE)
+trigrams <- quanteda::ngrams(tokens, n = 3)
+cv <- tbl_df(data.frame(trigrams = trigrams[[1]]))
+cv$trigrams <- as.character(cv$trigrams)
+
+cv <-separate(cv, col = trigrams, c("First", "Second", "Third"), sep = "_")
+cv$predictedCorrectly = FALSE
+
+# readRDS("cv_sample.Rda")
+
+cv$predictedCorrectly <- FALSE
+system.time(for (i in 1:5000) {
   print(i)
-  value <- df$unigrams[i]
-  value <- gsub("'", "''", value) # Escape apostrophes
-  dbSendQuery(conn = db, paste("INSERT INTO unigram (gram) VALUES ('", value, "')", sep = ""))
-}
+  first <- as.character(cv[i, 'First'])
+  second <- as.character(cv[i, 'Second'])
+  third <- as.character(cv[i, 'Third'])
+  print(paste("Predicting:", first, second, third, sep = " "))
+  prediction <- predict(paste(first, second, sep = " "))
+  print(prediction)
+  if (third %in% prediction) {
+    cv[i, 'predictedCorrectly'] <- TRUE
+  }
+})
+sum <- sum(cv$predictedCorrectly[1:5000])
+print("----------")
+print(paste("RESULT: Correct = ", sum, "; Incorrect = ", 5000 - sum, "; Percentage: ", sum/5000, sep = ""))
+
+
 
 
