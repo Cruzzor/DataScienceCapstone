@@ -12,26 +12,35 @@ predict_one <- function(x) {
 predict <- function(x) {
   split <- strsplit(x, " ")
   nwords <- nwords(x)
-  first <- split[[1]][nwords - 1]
-  second <- split[[1]][nwords]
+  first <- split[[1]][nwords - 2]
+  second <- split[[1]][nwords - 1]
+  third <- split[[1]][nwords]
   
-  # Tri-gram
-  trigrams <- filter(three, First == first & Second == second) %>% top_n(3, GTProb)
-  if (nrow(trigrams) > 0) {
-    return(trigrams$Third)
+  # Four-grams
+  fourgrams <- filter(four, First == first & Second == second & Third == third) %>% top_n(3, GTProb)
+  if (nrow(fourgrams) > 0) {
+    return(fourgrams$Fourth)
   }
-  else {
-    # Two-grams
-    twograms <- filter(two, First == second) %>% mutate(newProb = GTProb * Alpha) %>% top_n(3, newProb)
-    if (nrow(twograms) > 0) {
-      return(twograms$Second)
+  else{
+    # Tri-gram
+    trigrams <- filter(three, First == second & Second == third) %>% mutate(newProb = GTProb * Alpha) %>% top_n(3, newProb)
+    if (nrow(trigrams) > 0) {
+      return(trigrams$Third)
     }
     else {
-      # Return most frequent single words
-      unigrams <- mutate(one, newProb = GTProb * Alpha) %>% arrange(desc(newProb)) %>% top_n(3, newProb)
-      return(unigrams$Word)
+      # Two-grams
+      twograms <- filter(two, First == third) %>% mutate(newProb = GTProb * Alpha) %>% top_n(3, newProb)
+      if (nrow(twograms) > 0) {
+        return(twograms$Second)
+      }
+      else {
+        # Return most frequent single words
+        unigrams <- mutate(one, newProb = GTProb * Alpha) %>% arrange(desc(newProb)) %>% top_n(3, newProb)
+        return(unigrams$Word)
+      }
     }
   }
-  
   #OPTIMIERUNGEN: Berechne vorher alpha*P; Behalte nur die besten drei von allen
 }
+
+

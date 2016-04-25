@@ -35,32 +35,29 @@ full_sample <- c(twitter_sample, blogs_sample, news_sample)
 
 ## Hier: pre-processing wie oben
 tokens <- tokenize(paste(full_sample, collapse = ''), removePunct = FALSE)
-trigrams <- quanteda::ngrams(tokens, n = 3)
-cv <- tbl_df(data.frame(trigrams = trigrams[[1]]))
-cv$trigrams <- as.character(cv$trigrams)
+fourgrams <- quanteda::ngrams(tokens, n = 4)
+cv <- tbl_df(data.frame(fourgrams = fourgrams[[1]]))
+cv$fourgrams <- as.character(cv$fourgrams)
 
-cv <-separate(cv, col = trigrams, c("First", "Second", "Third"), sep = "_")
+cv <-separate(cv, col = fourgrams, c("First", "Second", "Third", "Fourth"), sep = "_")
 cv$predictedCorrectly = FALSE
 
 # readRDS("cv_sample.Rda")
 
 cv$predictedCorrectly <- FALSE
-system.time(for (i in 1:5000) {
+system.time(for (i in 1:1000) {
   print(i)
   first <- as.character(cv[i, 'First'])
   second <- as.character(cv[i, 'Second'])
   third <- as.character(cv[i, 'Third'])
-  print(paste("Predicting:", first, second, third, sep = " "))
-  prediction <- predict(paste(first, second, sep = " "))
+  fourth <- as.character(cv[i, 'Fourth'])
+  print(paste("Predicting:", first, second, third, fourth, sep = " "))
+  prediction <- predict(paste(first, second, third, sep = " "))
   print(prediction)
-  if (third %in% prediction) {
+  if (fourth %in% prediction) {
     cv[i, 'predictedCorrectly'] <- TRUE
   }
 })
-sum <- sum(cv$predictedCorrectly[1:5000])
+sum <- sum(cv$predictedCorrectly[1:1000])
 print("----------")
-print(paste("RESULT: Correct = ", sum, "; Incorrect = ", 5000 - sum, "; Percentage: ", sum/5000, sep = ""))
-
-
-
-
+print(paste("RESULT: Correct = ", sum, "; Incorrect = ", 1000 - sum, "; Percentage: ", sum/1000, sep = ""))
