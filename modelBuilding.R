@@ -115,7 +115,7 @@ four <- mutate(four, GTProb = GTCounts / n) %>%
   separate(col = Var1, c("First", "Second", "Third", "Fourth"), sep = " ") %>%
   mutate(Ngram = paste(First, Second, Third, Fourth, sep = " "))
 
-system.time(for (i in 1:nrow(three)) {
+system.time(for (i in 1:10) {
   first <- as.character(three[i, 1])
   second <- as.character(three[i, 2])
   third <- as.character(three[i, 3])

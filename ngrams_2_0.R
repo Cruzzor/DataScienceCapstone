@@ -34,7 +34,7 @@ news_sample <- sample(news, size = length(news) * 0.001, replace = FALSE)
 full_sample <- c(twitter_sample, blogs_sample, news_sample)
 
 ## Hier: pre-processing wie oben
-tokens <- tokenize(paste(full_sample, collapse = ''), removePunct = FALSE)
+tokens <- tokenize(paste(cv_sample, collapse = ''), removePunct = FALSE)
 fourgrams <- quanteda::ngrams(tokens, n = 4)
 cv <- tbl_df(data.frame(fourgrams = fourgrams[[1]]))
 cv$fourgrams <- as.character(cv$fourgrams)
@@ -42,7 +42,8 @@ cv$fourgrams <- as.character(cv$fourgrams)
 cv <-separate(cv, col = fourgrams, c("First", "Second", "Third", "Fourth"), sep = "_")
 cv$predictedCorrectly = FALSE
 
-# readRDS("cv_sample.Rda")
+#cv <- readRDS("cv_sample.Rda")
+#saveRDS(cv, "cv_sample.Rda")
 
 cv$predictedCorrectly <- FALSE
 system.time(for (i in 1:1000) {
