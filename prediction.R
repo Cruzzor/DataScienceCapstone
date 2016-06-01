@@ -16,14 +16,8 @@ predict <- function(x) {
   second <- split[[1]][nwords - 1]
   third <- split[[1]][nwords]
   
-  # Four-grams
-  fourgrams <- filter(four, First == first & Second == second & Third == third) %>% top_n(3, GTProb)
-  if (nrow(fourgrams) > 0) {
-    return(fourgrams$Fourth)
-  }
-  else{
     # Tri-gram
-    trigrams <- filter(three, First == second & Second == third) %>% mutate(newProb = GTProb * Alpha) %>% top_n(3, newProb)
+    trigrams <- filter(three, First == second & Second == third) %>% top_n(3, GTProb)
     if (nrow(trigrams) > 0) {
       return(trigrams$Third)
     }
@@ -39,7 +33,6 @@ predict <- function(x) {
         return(unigrams$Word)
       }
     }
-  }
   #OPTIMIERUNGEN: Berechne vorher alpha*P; Behalte nur die besten drei von allen
 }
 
